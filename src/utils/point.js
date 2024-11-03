@@ -60,7 +60,25 @@ function capitalize(str) {
   return str.replace(str[0], firstLetter);
 }
 
+function getPointsDateDifference(pointA, pointB) {
+  return new Date(pointA.dateFrom) - new Date(pointB.dateFrom);
+}
+
+function getPointsPriceDifference(pointA, pointB) {
+  return pointB.basePrice - pointA.basePrice;
+}
+
+function getPointsDurationDifference(pointA, pointB) {
+  const durationA = new Date(pointA.dateTo) - new Date(pointA.dateFrom);
+  const durationB = new Date(pointB.dateTo) - new Date(pointB.dateFrom);
+
+  return durationB - durationA;
+}
+
 export {
+  getPointsDateDifference,
+  getPointsPriceDifference,
+  getPointsDurationDifference,
   getPointDuration,
   formatStringToDateTime,
   formatStringToTime,

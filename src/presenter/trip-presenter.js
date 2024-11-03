@@ -1,9 +1,16 @@
-import { render } from '../framework/render';
+import { render, replace, remove } from '../framework/render';
 import EventListView from '../view/event-list-view';
 import NoPointView from '../view/no-point-view';
 import SortView from '../view/sort-view';
 import PointPresenter from './point-presenter';
 import {updateItem} from '../utils/common';
+import { SortType } from '../const';
+
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
+import { sort } from '../utils/sort';
+
+dayjs.extend(duration);
 
 export default class TripPresenter {
   #tripContainer = null;
@@ -11,12 +18,15 @@ export default class TripPresenter {
   #offersModel = null;
   #destionationsModel = null;
 
-  #sortComponent = new SortView();
+  #sortComponent = null;
   #pointListComponent = new EventListView();
   #noPointsComponent = new NoPointView();
 
   #points = [];
   #pointsPresenters = new Map();
+
+  #currentSortType = SortType.DAY;
+  #sourcedPoints = [];
 
   constructor({tripContainer, pointsModel, offersModel, destionationsModel}) {
     this.#tripContainer = tripContainer;
@@ -24,7 +34,11 @@ export default class TripPresenter {
     this.#offersModel = offersModel;
     this.#destionationsModel = destionationsModel;
 
-    this.#points = structuredClone(this.#pointsModel.get());
+    this.#points = [...this.#pointsModel.get()];
+    this.#sourcedPoints = [...this.#pointsModel.get()];
+
+    this.#points = sort[SortType.DAY]([...this.#pointsModel.get()]);
+    this.#sourcedPoints = sort[SortType.DAY]([...this.#pointsModel.get()]);
   }
 
   init() {
@@ -58,6 +72,7 @@ export default class TripPresenter {
 
   #handlePointChange = (updatedPoint) => {
     this.#points = updateItem(this.#points, updatedPoint);
+    this.#sourcedPoints = updateItem(this.#sourcedPoints, updatedPoint);
 
     this.#pointsPresenters.get(updatedPoint.id).init({
       point: updatedPoint,
@@ -67,8 +82,38 @@ export default class TripPresenter {
     });
   };
 
+  #sortPoints(sortType) {
+    this.#currentSortType = sortType;
+    this.#points = sort[this.#currentSortType](this.#points);
+  }
+
+  #handleSortTypeChange = (sortType) => {
+    if (this.#currentSortType === sortType) {
+      return;
+    }
+
+    // - Сортируем задачи
+    this.#sortPoints(sortType);
+    // - Очищаем список
+    this.#clearPointList();
+    // - Рендерим список заново
+    this.#renderPointList();
+  };
+
   #renderSort() {
-    render(this.#sortComponent, this.#tripContainer);
+    const prevSortComponent = this.#sortComponent;
+
+    this.#sortComponent = new SortView({
+      sortType: this.#currentSortType,
+      onSortTypeChange: this.#handleSortTypeChange,
+    });
+
+    if (prevSortComponent) {
+      replace(this.#sortComponent, prevSortComponent);
+      remove(prevSortComponent);
+    } else {
+      render(this.#sortComponent, this.#tripContainer);
+    }
   }
 
   #renderNoPoints() {
